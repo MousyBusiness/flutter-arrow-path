@@ -27,21 +27,22 @@ class ArrowPath {
     bool isDoubleSided = false,
     bool reverse = false,
     bool isAdjusted = true,
+    bool returnOnlyArrow = false, // new parameter
   }) {
     double adjustmentAngle = 0;
 
     final double angle = math.pi - tipAngle;
     final List<PathMetric> pathMetrics = path.computeMetrics().toList();
     if (pathMetrics.isEmpty) {
-      /// This can happen if the path as no length (trying to draw an arrow that is too small, like less than 1 pixel).
       return path;
     }
+
+    Path arrowPath = Path(); // path for arrow(s)
 
     Offset tipVector;
     final PathMetric lastPathMetric = pathMetrics.last;
     final Tangent? tangentLastPath = lastPathMetric.getTangentForOffset(lastPathMetric.length);
     if (tangentLastPath == null) {
-      /// This should never happen.
       return path;
     }
 
@@ -54,12 +55,12 @@ class ArrowPath {
       }
 
       tipVector = _rotateVector(tangentLastPath.vector, angle - adjustmentAngle) * tipLength;
-      path.moveTo(tangentLastPath.position.dx, tangentLastPath.position.dy);
-      path.relativeLineTo(tipVector.dx, tipVector.dy);
+      arrowPath.moveTo(tangentLastPath.position.dx, tangentLastPath.position.dy);
+      arrowPath.relativeLineTo(tipVector.dx, tipVector.dy);
 
       tipVector = _rotateVector(tangentLastPath.vector, -angle - adjustmentAngle) * tipLength;
-      path.moveTo(tangentLastPath.position.dx, tangentLastPath.position.dy);
-      path.relativeLineTo(tipVector.dx, tipVector.dy);
+      arrowPath.moveTo(tangentLastPath.position.dx, tangentLastPath.position.dy);
+      arrowPath.relativeLineTo(tipVector.dx, tipVector.dy);
     }
 
     final PathMetric? firstPathMetric = (isDoubleSided || reverse) ? pathMetrics.first : null;
@@ -72,19 +73,23 @@ class ArrowPath {
         }
 
         tipVector = _rotateVector(-tangentFirstPath.vector, angle - adjustmentAngle) * tipLength;
-        path.moveTo(tangentFirstPath.position.dx, tangentFirstPath.position.dy);
-        path.relativeLineTo(tipVector.dx, tipVector.dy);
+        arrowPath.moveTo(tangentFirstPath.position.dx, tangentFirstPath.position.dy);
+        arrowPath.relativeLineTo(tipVector.dx, tipVector.dy);
 
         tipVector = _rotateVector(-tangentFirstPath.vector, -angle - adjustmentAngle) * tipLength;
-        path.moveTo(tangentFirstPath.position.dx, tangentFirstPath.position.dy);
-        path.relativeLineTo(tipVector.dx, tipVector.dy);
+        arrowPath.moveTo(tangentFirstPath.position.dx, tangentFirstPath.position.dy);
+        arrowPath.relativeLineTo(tipVector.dx, tipVector.dy);
       }
     }
 
-    path.moveTo(originalPosition.dx, originalPosition.dy);
-
-    return path;
+    if (returnOnlyArrow) {
+      return arrowPath; // return only the arrow
+    } else {
+      path.addPath(arrowPath, Offset(0, 0)); // add arrowPath to the main path
+      return path; // return the main path with arrow(s)
+    }
   }
+
 
   static Offset _rotateVector(Offset vector, double angle) => Offset(
         math.cos(angle) * vector.dx - math.sin(angle) * vector.dy,
